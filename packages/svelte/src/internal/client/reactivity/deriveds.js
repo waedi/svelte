@@ -6,6 +6,7 @@ import {
 	DESTROYED,
 	DIRTY,
 	EFFECT_HAS_DERIVED,
+	LINKED_STATE,
 	MAYBE_DIRTY,
 	UNOWNED
 } from '../constants.js';
@@ -169,6 +170,9 @@ export function execute_derived(derived) {
  * @returns {void}
  */
 export function update_derived(derived) {
+	if ((derived.parent !== null && derived.parent.f & LINKED_STATE) !== 0) {
+		set_signal_status(derived, CLEAN);
+	}
 	var value = execute_derived(derived);
 	var status =
 		(skip_reaction || (derived.f & UNOWNED) !== 0) && derived.deps !== null ? MAYBE_DIRTY : CLEAN;
