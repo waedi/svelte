@@ -2335,6 +2335,7 @@ declare module 'svelte/types/compiler/interfaces' {
  * @param initial The initial value
  */
 declare function $state<T>(initial: T): T;
+declare function $state<T>(initial: T, ...link: (Function)[]): T;
 declare function $state<T>(): T | undefined;
 
 declare namespace $state {

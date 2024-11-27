@@ -132,9 +132,38 @@ export function VariableDeclaration(node, context) {
 				};
 
 				if (declarator.id.type === 'Identifier') {
-					declarations.push(
-						b.declarator(declarator.id, create_state_declarator(declarator.id, value))
+					const state_declaration = b.declarator(
+						declarator.id,
+						create_state_declarator(declarator.id, value)
 					);
+					if (args.length > 1) {
+						const id = declarator.id.name;
+						const transform = context.state.transform[id];
+						delete context.state.transform[id];
+
+						declarations.push(
+							b.declarator(
+								declarator.id,
+								b.call(
+									'$.derived_state',
+									b.thunk(
+										b.block([
+											{ ...node, declarations: [state_declaration] },
+											...(args.slice(1)).map((arg) =>
+												b.stmt(
+													b.call('$.get', b.call('$.derived', /** @type {Expression} */ (context.visit(arg))))
+												)
+											),
+											b.return(declarator.id)
+										])
+									)
+								)
+							)
+						);
+						context.state.transform[id] = transform;
+					} else {
+						declarations.push(state_declaration);
+					}
 				} else {
 					const tmp = context.state.scope.generate('tmp');
 					const paths = extract_paths(declarator.id);

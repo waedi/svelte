@@ -76,7 +76,7 @@ export function CallExpression(node, context) {
 		case '$state':
 		case '$state.raw':
 		case '$derived':
-		case '$derived.by':
+		case '$derived.by': {
 			if (
 				parent.type !== 'VariableDeclarator' &&
 				!(parent.type === 'PropertyDefinition' && !parent.static && !parent.computed)
@@ -86,12 +86,28 @@ export function CallExpression(node, context) {
 
 			if ((rune === '$derived' || rune === '$derived.by') && node.arguments.length !== 1) {
 				e.rune_invalid_arguments_length(node, rune, 'exactly one argument');
-			} else if (rune === '$state' && node.arguments.length > 1) {
-				e.rune_invalid_arguments_length(node, rune, 'zero or one arguments');
+			}
+			const grand_parent = /** @type {SvelteNode} */ (get_parent(context.path, -2));
+
+			if (rune === '$state' && node.arguments.length > 1) {
+				if (
+					grand_parent.type !== 'VariableDeclaration' ||
+					grand_parent.declarations.length !== 1 ||
+					grand_parent.declarations[0].id?.type !== 'Identifier'
+				) {
+					throw new Error('Bad derived state');
+				}
+				const id = grand_parent.declarations[0].id.name;
+				const binding = context.state.scope.get(id);
+
+				if (!binding || binding.reassigned) {
+					throw new Error('Bad derived state, cannot be re-assigned');
+				}
+				binding.kind = 'derived';
 			}
 
 			break;
-
+		}
 		case '$effect':
 		case '$effect.pre':
 			if (parent.type !== 'ExpressionStatement') {
