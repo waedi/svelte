@@ -101,7 +101,6 @@ export {
 	render_effect,
 	template_effect,
 	effect,
-	sync_effect,
 	user_effect,
 	user_pre_effect
 } from './reactivity/effects.js';

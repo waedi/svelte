@@ -2335,7 +2335,7 @@ declare module 'svelte/types/compiler/interfaces' {
  * @param initial The initial value
  */
 declare function $state<T>(initial: T): T;
-declare function $state<T>(initial: T, ...link: (Function)[]): T;
+declare function $state<T>(initial: T, options: { link: () => void }): T;
 declare function $state<T>(): T | undefined;
 
 declare namespace $state {
@@ -2569,8 +2569,6 @@ declare namespace $effect {
 	 * @param fn The function to execute
 	 */
 	export function pre(fn: () => void | (() => void)): void;
-
-	export function sync(fn: () => void | (() => void)): void;
 
 	/**
 	 * The `$effect.tracking` rune is an advanced feature that tells you whether or not the code is running inside a tracking context, such as an effect or inside your template.

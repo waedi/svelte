@@ -185,16 +185,6 @@ export function teardown(fn) {
 }
 
 /**
- * Internal representation of `$effect.sync(...)`
- * @param {() => void | (() => void)} fn
- */
-export function sync_effect(fn) {
-	const derived_effect = derived(fn);
-	get(derived_effect);
-	return derived_effect;
-}
-
-/**
  * Internal representation of `$effect(...)`
  * @param {() => void | (() => void)} fn
  */

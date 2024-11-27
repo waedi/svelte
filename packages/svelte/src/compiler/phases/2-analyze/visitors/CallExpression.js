@@ -90,17 +90,16 @@ export function CallExpression(node, context) {
 
 			if (rune === '$state') {
 				if (node.arguments.length > 2) {
-					e.rune_invalid_arguments_length(node, rune, 'exactly one or two arguments');
+					e.rune_invalid_arguments_length(node, rune, 'zero, one or two arguments');
 				}
 				if (node.arguments.length === 2) {
 					if (
-						node.arguments[1].type !== 'ArrowFunctionExpression' ||
-						node.arguments[1].body.type !== 'BlockStatement' ||
+						node.arguments[1].type !== 'ObjectExpression' ||
 						grand_parent.type !== 'VariableDeclaration' ||
 						grand_parent.declarations.length !== 1 ||
 						grand_parent.declarations[0].id?.type !== 'Identifier'
 					) {
-						throw new Error('Bad linked state');
+						throw new Error('TODO bad $state');
 					}
 					const id = grand_parent.declarations[0].id.name;
 					const binding = /** @type {Binding} */ (context.state.scope.get(id));
@@ -112,7 +111,6 @@ export function CallExpression(node, context) {
 		}
 		case '$effect':
 		case '$effect.pre':
-		case '$effect.sync':
 			if (parent.type !== 'ExpressionStatement') {
 				e.effect_invalid_placement(node);
 			}
@@ -124,22 +122,6 @@ export function CallExpression(node, context) {
 			// `$effect` needs context because Svelte needs to know whether it should re-run
 			// effects that invalidate themselves, and that's determined by whether we're in runes mode
 			context.state.analysis.needs_context = true;
-
-			if (rune === '$effect.sync') {
-				for (let i = context.path.length - 1; i >= 0; i--) {
-					const node = context.path[i];
-					if (node.type === 'CallExpression' && get_rune(node, context.state.scope) === '$state') {
-						break;
-					}
-					if (
-						node.type !== 'BlockStatement' &&
-						node.type !== 'ExpressionStatement' &&
-						node.type !== 'ArrowFunctionExpression'
-					) {
-						throw new Error('TODO: invalid usage of $effect.sync');
-					}
-				}
-			}
 
 			break;
 

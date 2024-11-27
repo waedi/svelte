@@ -1,4 +1,4 @@
-/** @import { ArrowFunctionExpression, BlockStatement, CallExpression, Expression, Identifier, Literal, VariableDeclaration, VariableDeclarator } from 'estree' */
+/** @import { FunctionExpression, ObjectExpression, Property, CallExpression, Expression, Identifier, Literal, VariableDeclaration, VariableDeclarator, FunctionExpression } from 'estree' */
 /** @import { Binding } from '#compiler' */
 /** @import { ComponentClientTransformState, ComponentContext } from '../types' */
 import { dev } from '../../../../state.js';
@@ -137,23 +137,38 @@ export function VariableDeclaration(node, context) {
 						create_state_declarator(declarator.id, value)
 					);
 					if (args.length === 2) {
-						const linked_body = /** @type {ArrowFunctionExpression} */ (context.visit(args[1]))
-
-						declarations.push(
-							b.declarator(
-								declarator.id,
-								b.call(
-									'$.state_linked',
-									b.thunk(
-										b.block([
-											{ ...node, declarations: [state_declaration] },
-											.../** @type {BlockStatement} */ (linked_body.body).body,
-											b.return(declarator.id)
-										])
-									)
-								)
+						const options = /** @type {ObjectExpression} */ (args[1]);
+						const link_option = /** @type {undefined | Property} */ (
+							options.properties.find(
+								(p) => p.type === 'Property' && p.key.type === 'Identifier' && p.key.name === 'link'
 							)
 						);
+
+						if (link_option) {
+							declarations.push(
+								b.declarator(
+									declarator.id,
+									b.call(
+										'$.state_linked',
+										b.thunk(
+											b.block([
+												{ ...node, declarations: [state_declaration] },
+												b.stmt(
+													b.call(
+														'$.get',
+														b.call(
+															'$.derived',
+															/** @type {FunctionExpression} */ (context.visit(link_option.value))
+														)
+													)
+												),
+												b.return(declarator.id)
+											])
+										)
+									)
+								)
+							);
+						}
 					} else {
 						declarations.push(state_declaration);
 					}
