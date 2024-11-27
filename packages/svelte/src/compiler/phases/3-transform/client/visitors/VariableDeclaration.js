@@ -1,4 +1,4 @@
-/** @import { CallExpression, Expression, Identifier, Literal, VariableDeclaration, VariableDeclarator } from 'estree' */
+/** @import { ArrowFunctionExpression, BlockStatement, CallExpression, Expression, Identifier, Literal, VariableDeclaration, VariableDeclarator } from 'estree' */
 /** @import { Binding } from '#compiler' */
 /** @import { ComponentClientTransformState, ComponentContext } from '../types' */
 import { dev } from '../../../../state.js';
@@ -136,31 +136,24 @@ export function VariableDeclaration(node, context) {
 						declarator.id,
 						create_state_declarator(declarator.id, value)
 					);
-					if (args.length > 1) {
-						const id = declarator.id.name;
-						const transform = context.state.transform[id];
-						delete context.state.transform[id];
+					if (args.length === 2) {
+						const linked_body = /** @type {ArrowFunctionExpression} */ (context.visit(args[1]))
 
 						declarations.push(
 							b.declarator(
 								declarator.id,
 								b.call(
-									'$.derived_state',
+									'$.state_linked',
 									b.thunk(
 										b.block([
 											{ ...node, declarations: [state_declaration] },
-											...(args.slice(1)).map((arg) =>
-												b.stmt(
-													b.call('$.get', b.call('$.derived', /** @type {Expression} */ (context.visit(arg))))
-												)
-											),
+											.../** @type {BlockStatement} */ (linked_body.body).body,
 											b.return(declarator.id)
 										])
 									)
 								)
 							)
 						);
-						context.state.transform[id] = transform;
 					} else {
 						declarations.push(state_declaration);
 					}

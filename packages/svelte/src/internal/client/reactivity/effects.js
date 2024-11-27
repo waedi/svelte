@@ -35,14 +35,15 @@ import {
 	INSPECT_EFFECT,
 	HEAD_EFFECT,
 	MAYBE_DIRTY,
-	EFFECT_HAS_DERIVED
+	EFFECT_HAS_DERIVED,
+	LINKED_STATE
 } from '../constants.js';
 import { set } from './sources.js';
 import * as e from '../errors.js';
 import { DEV } from 'esm-env';
 import { define_property } from '../../shared/utils.js';
 import { get_next_sibling } from '../dom/operations.js';
-import { destroy_derived } from './deriveds.js';
+import { derived, destroy_derived } from './deriveds.js';
 
 /**
  * @param {'$effect' | '$effect.pre' | '$inspect'} rune
@@ -181,6 +182,16 @@ export function teardown(fn) {
 	set_signal_status(effect, CLEAN);
 	effect.teardown = fn;
 	return effect;
+}
+
+/**
+ * Internal representation of `$effect.sync(...)`
+ * @param {() => void | (() => void)} fn
+ */
+export function sync_effect(fn) {
+	const derived_effect = derived(fn);
+	get(derived_effect);
+	return derived_effect;
 }
 
 /**

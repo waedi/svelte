@@ -30,10 +30,11 @@ import {
 	UNOWNED,
 	MAYBE_DIRTY,
 	BLOCK_EFFECT,
-	DERIVED_STATE
+	LINKED_STATE
 } from '../constants.js';
 import * as e from '../errors.js';
 import { legacy_mode_flag } from '../../flags/index.js';
+import { derived } from './deriveds.js';
 
 export let inspect_effects = new Set();
 
@@ -66,6 +67,15 @@ export function source(v) {
 export function state(v) {
 	return push_derived_source(source(v));
 }
+
+/**
+ * @template T
+ * @param {() => T} fn
+ */
+export function state_linked(fn) {
+	return derived(fn, LINKED_STATE);
+}
+
 
 /**
  * @template V
@@ -145,7 +155,7 @@ export function set(source, value) {
 		(derived_sources === null || !derived_sources.includes(source))
 	) {
 		var derived = /** @type {Derived} */ (active_reaction);
-		if (derived.parent === null || (derived.parent.f & DERIVED_STATE) === 0) {
+		if (derived.parent === null || (derived.parent.f & LINKED_STATE) === 0) {
 			e.state_unsafe_mutation();
 		}
 	}
@@ -160,6 +170,10 @@ export function set(source, value) {
  * @returns {V}
  */
 export function internal_set(source, value) {
+	if ((source.f & LINKED_STATE) !== 0) {
+		return internal_set(/** @type { Value<V> } */ (source.v), value)
+	}
+
 	if (!source.equals(value)) {
 		source.v = value;
 		source.version = increment_version();
@@ -251,7 +265,7 @@ function mark_reactions(signal, status) {
 
 				var parent = /** @type {Derived} */ (reaction).parent;
 
-				if (parent !== null && (parent.f & DERIVED_STATE) !== 0) {
+				if (parent !== null && (parent.f & LINKED_STATE) !== 0) {
 					mark_reactions(/** @type {Derived} */ (parent), MAYBE_DIRTY);
 				}
 			} else {

@@ -92,7 +92,7 @@ export {
 	template_with_script,
 	text
 } from './dom/template.js';
-export { derived, derived_state, derived_safe_equal } from './reactivity/deriveds.js';
+export { derived, derived_safe_equal } from './reactivity/deriveds.js';
 export {
 	effect_tracking,
 	effect_root,
@@ -101,10 +101,11 @@ export {
 	render_effect,
 	template_effect,
 	effect,
+	sync_effect,
 	user_effect,
 	user_pre_effect
 } from './reactivity/effects.js';
-export { mutable_state, mutate, set, state } from './reactivity/sources.js';
+export { mutable_state, mutate, set, state, state_linked } from './reactivity/sources.js';
 export {
 	prop,
 	rest_props,

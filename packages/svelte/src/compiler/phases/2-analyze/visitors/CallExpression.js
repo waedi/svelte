@@ -1,11 +1,10 @@
 /** @import { CallExpression, VariableDeclarator } from 'estree' */
-/** @import { AST, SvelteNode } from '#compiler' */
+/** @import { AST, SvelteNode, Binding } from '#compiler' */
 /** @import { Context } from '../types' */
 import { get_rune } from '../../scope.js';
 import * as e from '../../../errors.js';
 import { get_parent, unwrap_optional } from '../../../utils/ast.js';
 import { is_pure, is_safe_identifier } from './shared/utils.js';
-import { mark_subtree_dynamic } from './shared/fragment.js';
 
 /**
  * @param {CallExpression} node
@@ -89,27 +88,31 @@ export function CallExpression(node, context) {
 			}
 			const grand_parent = /** @type {SvelteNode} */ (get_parent(context.path, -2));
 
-			if (rune === '$state' && node.arguments.length > 1) {
-				if (
-					grand_parent.type !== 'VariableDeclaration' ||
-					grand_parent.declarations.length !== 1 ||
-					grand_parent.declarations[0].id?.type !== 'Identifier'
-				) {
-					throw new Error('Bad derived state');
+			if (rune === '$state') {
+				if (node.arguments.length > 2) {
+					e.rune_invalid_arguments_length(node, rune, 'exactly one or two arguments');
 				}
-				const id = grand_parent.declarations[0].id.name;
-				const binding = context.state.scope.get(id);
-
-				if (!binding || binding.reassigned) {
-					throw new Error('Bad derived state, cannot be re-assigned');
+				if (node.arguments.length === 2) {
+					if (
+						node.arguments[1].type !== 'ArrowFunctionExpression' ||
+						node.arguments[1].body.type !== 'BlockStatement' ||
+						grand_parent.type !== 'VariableDeclaration' ||
+						grand_parent.declarations.length !== 1 ||
+						grand_parent.declarations[0].id?.type !== 'Identifier'
+					) {
+						throw new Error('Bad linked state');
+					}
+					const id = grand_parent.declarations[0].id.name;
+					const binding = /** @type {Binding} */ (context.state.scope.get(id));
+					binding.reassigned = true;
 				}
-				binding.kind = 'derived';
 			}
 
 			break;
 		}
 		case '$effect':
 		case '$effect.pre':
+		case '$effect.sync':
 			if (parent.type !== 'ExpressionStatement') {
 				e.effect_invalid_placement(node);
 			}
@@ -121,6 +124,22 @@ export function CallExpression(node, context) {
 			// `$effect` needs context because Svelte needs to know whether it should re-run
 			// effects that invalidate themselves, and that's determined by whether we're in runes mode
 			context.state.analysis.needs_context = true;
+
+			if (rune === '$effect.sync') {
+				for (let i = context.path.length - 1; i >= 0; i--) {
+					const node = context.path[i];
+					if (node.type === 'CallExpression' && get_rune(node, context.state.scope) === '$state') {
+						break;
+					}
+					if (
+						node.type !== 'BlockStatement' &&
+						node.type !== 'ExpressionStatement' &&
+						node.type !== 'ArrowFunctionExpression'
+					) {
+						throw new Error('TODO: invalid usage of $effect.sync');
+					}
+				}
+			}
 
 			break;
 

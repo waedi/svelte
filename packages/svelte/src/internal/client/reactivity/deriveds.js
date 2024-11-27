@@ -3,7 +3,6 @@ import { DEV } from 'esm-env';
 import {
 	CLEAN,
 	DERIVED,
-	DERIVED_STATE,
 	DESTROYED,
 	DIRTY,
 	EFFECT_HAS_DERIVED,
@@ -68,14 +67,6 @@ export function derived(fn,  _flags = 0) {
 	}
 
 	return signal;
-}
-
-/**
- * @template T
- * @param {() => T} fn
- */
-export function derived_state(fn) {
-	return derived(fn, DERIVED_STATE);
 }
 
 /**
