@@ -105,7 +105,6 @@ function create_effect(type, fn, sync, push = true) {
 		first: null,
 		fn,
 		last: null,
-		linked: null,
 		next: null,
 		parent: is_root ? null : parent_effect,
 		prev: null,
@@ -231,11 +230,19 @@ export function user_pre_effect(fn, linked) {
 			value: '$effect.pre'
 		});
 	}
-	var effect = render_effect(fn);
-	if (linked !== undefined) {
-		effect.linked = linked;
-	}
-	return effect;
+
+	return render_effect(() => {
+		var teardown = fn();
+
+		if (linked !== undefined) {
+			var current_effect = /** @type {Effect} */ (active_reaction);
+			for (var link of linked) {
+				(current_effect.deriveds ??= []).push(link);
+			}
+		}
+
+		return teardown;
+	});
 }
 
 /** @param {() => void | (() => void)} fn */
@@ -382,7 +389,11 @@ export function destroy_effect_deriveds(signal) {
 		signal.deriveds = null;
 
 		for (var i = 0; i < deriveds.length; i += 1) {
-			destroy_derived(deriveds[i]);
+			var derived = deriveds[i];
+
+			if (derived.parent === signal) {
+				destroy_derived(deriveds[i]);
+			}
 		}
 	}
 }

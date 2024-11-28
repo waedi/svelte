@@ -59,8 +59,6 @@ export interface Effect extends Reaction {
 	first: null | Effect;
 	/** Last child effect created inside this signal */
 	last: null | Effect;
-	/** Linked deriveds */
-	linked: null | Derived[]
 	/** Parent effect */
 	parent: Effect | null;
 	/** Dev only */
