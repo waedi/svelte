@@ -261,6 +261,20 @@ function mark_reactions(signal, status) {
 		var reaction = reactions[i];
 		var flags = reaction.f;
 
+		if ((flags & LAZY_EFFECT) !== 0) {
+			var effect = /** @type {Effect} */ (reaction);
+			var deriveds = effect.deriveds;
+			if (deriveds !== null) {
+				for (let i = 0; i < deriveds.length; i++) {
+					var derived = deriveds[i];
+					if (derived.parent !== effect) {
+						set_signal_status(derived, DIRTY);
+						mark_reactions(derived, MAYBE_DIRTY);
+					}
+				}
+			}
+		}
+
 		// Skip any effects that are already dirty
 		if ((flags & DIRTY) !== 0) continue;
 
@@ -280,19 +294,8 @@ function mark_reactions(signal, status) {
 			if ((flags & DERIVED) !== 0) {
 				mark_reactions(/** @type {Derived} */ (reaction), MAYBE_DIRTY);
 			} else {
-				var effect = /** @type {Effect} */ (reaction);
+				effect = /** @type {Effect} */ (reaction);
 				schedule_effect(effect);
-
-				if ((flags & LAZY_EFFECT) !== 0) {
-					var deriveds = /** @type {Derived[]} */ (effect.deriveds);
-					for (let i = 0; i < deriveds.length; i++) {
-						var derived = deriveds[i];
-						if (derived.parent !== effect) {
-							set_signal_status(derived, DIRTY);
-							mark_reactions(derived, MAYBE_DIRTY);
-						}
-					}
-				}
 			}
 		}
 	}
