@@ -74,7 +74,6 @@ export function state(v) {
  * @param {() => Effect[]} fn
  */
 export function state_linked(state, fn) {
-	var init = false;
 	/** @type {Derived} */
 	var derived_state = derived(() => {
 		var effects = fn();
@@ -87,13 +86,11 @@ export function state_linked(state, fn) {
 				flush_effect(effects[i]);
 			}
 		}
+		var current_derived = /** @type {Derived} */ (active_reaction);
 
-		if (!init) {
-			init = true;
-			return state;
-		}
-		return derived_state.v;
+		return current_derived.v;
 	});
+	derived_state.v = state;
 
 	return derived_state;
 }

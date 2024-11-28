@@ -91,50 +91,32 @@ export function CallExpression(node, context) {
 
 			break;
 		case '$effect':
-		case '$effect.pre': {
-			const grand_parent = /** @type {SvelteNode} */ (get_parent(context.path, -2));
-
+		case '$effect.pre':
+		case '$effect.lazy': {
 			if (parent.type !== 'ExpressionStatement') {
 				e.effect_invalid_placement(node);
 			}
 
-			if (rune === '$effect.pre') {
-				if (node.arguments.length !== 1 && node.arguments.length !== 2) {
-					e.rune_invalid_arguments_length(node, rune, 'exactly one or two arguments');
+			if (rune === '$effect.lazy') {
+				if (node.arguments.length !== 2) {
+					e.rune_invalid_arguments_length(node, rune, 'exactly two arguments');
 				}
+				const state_ref = node.arguments[0];
 
-				if (node.arguments.length === 2) {
-					const linked = node.arguments[1];
-
-					if (linked.type !== 'ObjectExpression') {
-						throw new Error('Bad $effect.pre, second argument must be an object');
-					}
-					const scope = context.state.scope;
-
-					for (const property of linked.properties) {
-						if (
-							property.type !== 'Property' ||
-							property.computed ||
-							property.key.type !== 'Identifier' ||
-							property.key.name !== 'bind' ||
-							property.value.type !== 'Identifier'
-						) {
-							throw new Error(
-								'Bad $effect.pre, second argument must be an object simply properties'
-							);
-						}
-						const binding = /** @type {Binding} */ (scope.get(property.value.name));
-
-						if (binding === null || binding.kind !== 'state') {
-							throw new Error('Bad $effect.pre link, must be a local reference to $state');
-						}
-						const link = scope.generate('effect');
-						(binding.linked_effects ??= []).push(link);
-						/** @type {SimpleCallExpression} */ (node).metadata = {
-							link
-						};
-					}
+				if (state_ref.type !== 'Identifier') {
+					throw new Error('Bad $effect.lazy, first argument must be an identifier');
 				}
+				const scope = context.state.scope;
+				const binding = /** @type {Binding} */ (scope.get(state_ref.name));
+
+				if (binding === null || binding.kind !== 'state') {
+					throw new Error('Bad $effect.lazy link, must be a local reference to $state');
+				}
+				const id = scope.generate('effect');
+				(binding.linked_effects ??= []).push(id);
+				/** @type {SimpleCallExpression} */ (node).metadata = {
+					id
+				};
 			} else if (node.arguments.length !== 1) {
 				e.rune_invalid_arguments_length(node, rune, 'exactly one argument');
 			}
@@ -203,7 +185,7 @@ export function CallExpression(node, context) {
 	}
 
 	// `$inspect(foo)` or `$derived(foo) should not trigger the `static-state-reference` warning
-	if (rune === '$inspect' || rune === '$derived' || rune === '$effect.pre') {
+	if (rune === '$inspect' || rune === '$derived' || rune === '$effect.lazy') {
 		context.next({ ...context.state, function_depth: context.state.function_depth + 1 });
 	} else {
 		context.next();

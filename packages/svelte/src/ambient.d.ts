@@ -253,7 +253,9 @@ declare namespace $effect {
 	 * https://svelte.dev/docs/svelte/$effect#$effect.pre
 	 * @param fn The function to execute
 	 */
-	export function pre(fn: () => void | (() => void), options?: { bind: any }): void;
+	export function pre(fn: () => void | (() => void)): void;
+
+	export function lazy(state: any, fn: () => void | (() => void)): void;
 
 	/**
 	 * The `$effect.tracking` rune is an advanced feature that tells you whether or not the code is running inside a tracking context, such as an effect or inside your template.

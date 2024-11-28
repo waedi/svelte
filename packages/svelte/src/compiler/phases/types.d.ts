@@ -101,7 +101,7 @@ declare module 'estree' {
 
 	interface SimpleCallExpression {
 		metadata?: {
-			link: string;
+			id: string;
 		};
 	}
 }

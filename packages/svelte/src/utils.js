@@ -423,6 +423,7 @@ const RUNES = /** @type {const} */ ([
 	'$derived.by',
 	'$effect',
 	'$effect.pre',
+	'$effect.lazy',
 	'$effect.tracking',
 	'$effect.root',
 	'$inspect',

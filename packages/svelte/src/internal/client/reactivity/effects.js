@@ -35,7 +35,8 @@ import {
 	INSPECT_EFFECT,
 	HEAD_EFFECT,
 	MAYBE_DIRTY,
-	EFFECT_HAS_DERIVED
+	EFFECT_HAS_DERIVED,
+	LAZY_EFFECT
 } from '../constants.js';
 import { set } from './sources.js';
 import * as e from '../errors.js';
@@ -45,7 +46,7 @@ import { get_next_sibling } from '../dom/operations.js';
 import { destroy_derived } from './deriveds.js';
 
 /**
- * @param {'$effect' | '$effect.pre' | '$inspect'} rune
+ * @param {'$effect' | '$effect.pre' | '$effect.lazy' | '$inspect'} rune
  */
 export function validate_effect(rune) {
 	if (active_effect === null && active_reaction === null) {
@@ -218,12 +219,38 @@ export function user_effect(fn) {
 }
 
 /**
- * Internal representation of `$effect.pre(...)`
+ * Internal representation of `$effect.lazy(...)`
  * @param {() => void | (() => void)} fn
- * @param {Derived} [bound_state]
+ * @param {Derived} state
  * @returns {Effect}
  */
-export function user_pre_effect(fn, bound_state) {
+export function lazy_effect(fn, state) {
+	validate_effect('$effect.lazy');
+	if (DEV) {
+		define_property(fn, 'name', {
+			value: '$effect.lazy'
+		});
+	}
+
+	return create_effect(
+		LAZY_EFFECT,
+		() => {
+			var teardown = fn();
+			var current_effect = /** @type {Effect} */ (active_reaction);
+			(current_effect.deriveds ??= []).push(state);
+
+			return teardown;
+		},
+		false
+	);
+}
+
+/**
+ * Internal representation of `$effect.pre(...)`
+ * @param {() => void | (() => void)} fn
+ * @returns {Effect}
+ */
+export function user_pre_effect(fn) {
 	validate_effect('$effect.pre');
 	if (DEV) {
 		define_property(fn, 'name', {
@@ -231,16 +258,7 @@ export function user_pre_effect(fn, bound_state) {
 		});
 	}
 
-	return render_effect(() => {
-		var teardown = fn();
-
-		if (bound_state !== undefined) {
-			var current_effect = /** @type {Effect} */ (active_reaction);
-			(current_effect.deriveds ??= []).push(bound_state);
-		}
-
-		return teardown;
-	});
+	return render_effect(fn);
 }
 
 /** @param {() => void | (() => void)} fn */

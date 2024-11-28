@@ -12,17 +12,14 @@ export function ExpressionStatement(node, context) {
 
 	if (node.expression.type === 'CallExpression') {
 		if (rune === '$effect' || rune === '$effect.pre' || rune === '$effect.root') {
-			const link = node.expression.metadata?.link;
-
+			return b.empty;
+		}
+		if (rune === '$effect.lazy') {
 			// TODO we should probably only output the effect in SSR if it's link is referenced
 			// outside of the effect?
-			if (rune === '$effect.pre' && link) {
-				const func = /** @type {FunctionExpression} */ (node.expression.arguments[0]);
+			const func = /** @type {FunctionExpression} */ (node.expression.arguments[1]);
 
-				return b.stmt(b.call(/** @type {FunctionExpression} */ (context.visit(func))));
-			}
-
-			return b.empty;
+			return b.stmt(b.call(/** @type {FunctionExpression} */ (context.visit(func))));
 		}
 	}
 
