@@ -70,13 +70,16 @@ export function state(v) {
 
 /**
  * @template T
- * @param {() => T} fn
+ * @param {T} state
+ * @param {() => Effect[]} fn
  */
-export function state_linked(fn) {
-	return derived(() => {
-		// @ts-ignore
-		var [state, ...effects] = untrack(fn);
+export function state_linked(state, fn) {
+	var init = false;
+	/** @type {Derived} */
+	var derived_state = derived(() => {
+		var effects = fn();
 
+		set_signal_status(derived_state, CLEAN);
 		for (var i = 0; i < effects.length; i++) {
 			var effect = effects[i];
 			if (effect) {
@@ -84,8 +87,14 @@ export function state_linked(fn) {
 			}
 		}
 
-		return state;
+		if (!init) {
+			init = true;
+			return state;
+		}
+		return derived_state.v;
 	});
+
+	return derived_state;
 }
 
 /**
@@ -272,7 +281,17 @@ function mark_reactions(signal, status) {
 			if ((flags & DERIVED) !== 0) {
 				mark_reactions(/** @type {Derived} */ (reaction), MAYBE_DIRTY);
 			} else {
-				schedule_effect(/** @type {Effect} */ (reaction));
+				var effect = /** @type {Effect} */ (reaction)
+				schedule_effect(effect);
+
+				var linked = effect.linked;
+				if (linked !== null) {
+					for (let i = 0; i < linked.length; i++) {
+						var link = linked[i];
+						set_signal_status(link, DIRTY);
+						mark_reactions(link, MAYBE_DIRTY);
+					}
+				}
 			}
 		}
 	}

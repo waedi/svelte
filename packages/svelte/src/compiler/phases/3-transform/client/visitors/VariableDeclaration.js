@@ -128,7 +128,8 @@ export function VariableDeclaration(node, context) {
 					if (binding.linked_effects !== null) {
 						value = b.call(
 							'$.state_linked',
-							b.thunk(b.array([value, ...binding.linked_effects.map((s) => b.id(s))]))
+							value,
+							b.thunk(b.array(binding.linked_effects.map((s) => b.id(s))))
 						);
 					} else if (is_state_source(binding, context.state.analysis)) {
 						value = b.call('$.state', value);

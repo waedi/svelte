@@ -1,4 +1,4 @@
-/** @import { Expression, CallExpression, MemberExpression, ExpressionStatement } from 'estree' */
+/** @import { Expression, CallExpression, MemberExpression, ExpressionStatement, ArrayExpression } from 'estree' */
 /** @import { ComponentContext } from '../types' */
 import * as b from '../../../../utils/builders.js';
 import { get_rune } from '../../../scope.js';
@@ -16,12 +16,19 @@ export function ExpressionStatement(node, context) {
 			const func = /** @type {Expression} */ (context.visit(node.expression.arguments[0]));
 			const link = node.expression.metadata?.link;
 
-			const expr = b.call(callee, /** @type {Expression} */ (func));
-			expr.callee.loc = node.expression.callee.loc; // ensure correct mapping
-
 			if (rune === '$effect.pre' && link) {
+				const expr = b.call(
+					callee,
+					/** @type {Expression} */ (func),
+					/** @type {ArrayExpression} */ (node.expression.arguments[1])
+				);
+				expr.callee.loc = node.expression.callee.loc; // ensure correct mapping
+
 				return b.var(b.id(link), expr);
 			}
+
+			const expr = b.call(callee, /** @type {Expression} */ (func));
+			expr.callee.loc = node.expression.callee.loc; // ensure correct mapping
 
 			return b.stmt(expr);
 		}

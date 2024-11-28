@@ -105,6 +105,7 @@ function create_effect(type, fn, sync, push = true) {
 		first: null,
 		fn,
 		last: null,
+		linked: null,
 		next: null,
 		parent: is_root ? null : parent_effect,
 		prev: null,
@@ -220,16 +221,21 @@ export function user_effect(fn) {
 /**
  * Internal representation of `$effect.pre(...)`
  * @param {() => void | (() => void)} fn
+ * @param {Derived[]} [linked]
  * @returns {Effect}
  */
-export function user_pre_effect(fn) {
+export function user_pre_effect(fn, linked) {
 	validate_effect('$effect.pre');
 	if (DEV) {
 		define_property(fn, 'name', {
 			value: '$effect.pre'
 		});
 	}
-	return render_effect(fn);
+	var effect = render_effect(fn);
+	if (linked !== undefined) {
+		effect.linked = linked;
+	}
+	return effect;
 }
 
 /** @param {() => void | (() => void)} fn */
