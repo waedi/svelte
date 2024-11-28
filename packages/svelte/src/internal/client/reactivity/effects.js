@@ -220,10 +220,10 @@ export function user_effect(fn) {
 /**
  * Internal representation of `$effect.pre(...)`
  * @param {() => void | (() => void)} fn
- * @param {Derived[]} [linked]
+ * @param {Derived} [bound_state]
  * @returns {Effect}
  */
-export function user_pre_effect(fn, linked) {
+export function user_pre_effect(fn, bound_state) {
 	validate_effect('$effect.pre');
 	if (DEV) {
 		define_property(fn, 'name', {
@@ -234,11 +234,9 @@ export function user_pre_effect(fn, linked) {
 	return render_effect(() => {
 		var teardown = fn();
 
-		if (linked !== undefined) {
+		if (bound_state !== undefined) {
 			var current_effect = /** @type {Effect} */ (active_reaction);
-			for (var link of linked) {
-				(current_effect.deriveds ??= []).push(link);
-			}
+			(current_effect.deriveds ??= []).push(bound_state);
 		}
 
 		return teardown;

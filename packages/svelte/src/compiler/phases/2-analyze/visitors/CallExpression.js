@@ -106,18 +106,24 @@ export function CallExpression(node, context) {
 				if (node.arguments.length === 2) {
 					const linked = node.arguments[1];
 
-					if (
-						linked.type !== 'ArrayExpression' ||
-						linked.elements.some((e) => e?.type !== 'Identifier')
-					) {
-						throw new Error('Bad $effect.pre, second argument must be an array of identifiers');
+					if (linked.type !== 'ObjectExpression') {
+						throw new Error('Bad $effect.pre, second argument must be an object');
 					}
 					const scope = context.state.scope;
 
-					for (const element of linked.elements) {
-						const binding = /** @type {Binding} */ (
-							scope.get(/** @type {Identifier} */ (element).name)
-						);
+					for (const property of linked.properties) {
+						if (
+							property.type !== 'Property' ||
+							property.computed ||
+							property.key.type !== 'Identifier' ||
+							property.key.name !== 'bind' ||
+							property.value.type !== 'Identifier'
+						) {
+							throw new Error(
+								'Bad $effect.pre, second argument must be an object simply properties'
+							);
+						}
+						const binding = /** @type {Binding} */ (scope.get(property.value.name));
 
 						if (binding === null || binding.kind !== 'state') {
 							throw new Error('Bad $effect.pre link, must be a local reference to $state');
