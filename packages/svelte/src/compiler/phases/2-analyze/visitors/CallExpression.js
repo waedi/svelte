@@ -75,7 +75,7 @@ export function CallExpression(node, context) {
 		case '$state':
 		case '$state.raw':
 		case '$derived':
-		case '$derived.by': {
+		case '$derived.by':
 			if (
 				parent.type !== 'VariableDeclarator' &&
 				!(parent.type === 'PropertyDefinition' && !parent.static && !parent.computed)
@@ -90,7 +90,6 @@ export function CallExpression(node, context) {
 			}
 
 			break;
-		}
 		case '$effect':
 		case '$effect.pre': {
 			const grand_parent = /** @type {SvelteNode} */ (get_parent(context.path, -2));
