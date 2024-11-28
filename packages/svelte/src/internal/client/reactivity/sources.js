@@ -18,7 +18,8 @@ import {
 	set_derived_sources,
 	check_dirtiness,
 	set_is_flushing_effect,
-	is_flushing_effect
+	is_flushing_effect,
+	flush_effect
 } from '../runtime.js';
 import { equals, safe_equals } from './equality.js';
 import {
@@ -29,8 +30,7 @@ import {
 	INSPECT_EFFECT,
 	UNOWNED,
 	MAYBE_DIRTY,
-	BLOCK_EFFECT,
-	LINKED_STATE
+	BLOCK_EFFECT
 } from '../constants.js';
 import * as e from '../errors.js';
 import { legacy_mode_flag } from '../../flags/index.js';
@@ -73,9 +73,20 @@ export function state(v) {
  * @param {() => T} fn
  */
 export function state_linked(fn) {
-	return derived(fn, LINKED_STATE);
-}
+	return derived(() => {
+		// @ts-ignore
+		var [state, ...effects] = untrack(fn);
 
+		for (var i = 0; i < effects.length; i++) {
+			var effect = effects[i];
+			if (effect) {
+				flush_effect(effects[i]);
+			}
+		}
+
+		return state;
+	});
+}
 
 /**
  * @template V
@@ -154,10 +165,7 @@ export function set(source, value) {
 		// we allow the mutation.
 		(derived_sources === null || !derived_sources.includes(source))
 	) {
-		var derived = /** @type {Derived} */ (active_reaction);
-		if (derived.parent === null || (derived.parent.f & LINKED_STATE) === 0) {
-			e.state_unsafe_mutation();
-		}
+		e.state_unsafe_mutation();
 	}
 
 	return internal_set(source, value);
@@ -170,8 +178,9 @@ export function set(source, value) {
  * @returns {V}
  */
 export function internal_set(source, value) {
-	if ((source.f & LINKED_STATE) !== 0) {
-		return internal_set(/** @type { Value<V> } */ (source.v), value)
+	// If writing to a derived, ensure it's first been run
+	if ((source.f & DERIVED) !== 0 && source.v === null) {
+		untrack(() => get(source));
 	}
 
 	if (!source.equals(value)) {
@@ -262,12 +271,6 @@ function mark_reactions(signal, status) {
 		if ((flags & (CLEAN | UNOWNED)) !== 0) {
 			if ((flags & DERIVED) !== 0) {
 				mark_reactions(/** @type {Derived} */ (reaction), MAYBE_DIRTY);
-
-				var parent = /** @type {Derived} */ (reaction).parent;
-
-				if (parent !== null && (parent.f & LINKED_STATE) !== 0) {
-					mark_reactions(/** @type {Derived} */ (parent), MAYBE_DIRTY);
-				}
 			} else {
 				schedule_effect(/** @type {Effect} */ (reaction));
 			}

@@ -1,4 +1,4 @@
-/** @import { FunctionExpression, ObjectExpression, Property, CallExpression, Expression, Identifier, Literal, VariableDeclaration, VariableDeclarator, FunctionExpression } from 'estree' */
+/** @import { ObjectExpression, Property, CallExpression, Expression, Identifier, Literal, VariableDeclaration, VariableDeclarator, FunctionExpression } from 'estree' */
 /** @import { Binding } from '#compiler' */
 /** @import { ComponentClientTransformState, ComponentContext } from '../types' */
 import { dev } from '../../../../state.js';
@@ -125,53 +125,21 @@ export function VariableDeclaration(node, context) {
 					if (rune === '$state' && should_proxy(value, context.state.scope)) {
 						value = b.call('$.proxy', value);
 					}
-					if (is_state_source(binding, context.state.analysis)) {
+					if (binding.linked_effects !== null) {
+						value = b.call(
+							'$.state_linked',
+							b.thunk(b.array([value, ...binding.linked_effects.map((s) => b.id(s))]))
+						);
+					} else if (is_state_source(binding, context.state.analysis)) {
 						value = b.call('$.state', value);
 					}
 					return value;
 				};
 
 				if (declarator.id.type === 'Identifier') {
-					const state_declaration = b.declarator(
-						declarator.id,
-						create_state_declarator(declarator.id, value)
+					declarations.push(
+						b.declarator(declarator.id, create_state_declarator(declarator.id, value))
 					);
-					if (args.length === 2) {
-						const options = /** @type {ObjectExpression} */ (args[1]);
-						const link_option = /** @type {undefined | Property} */ (
-							options.properties.find(
-								(p) => p.type === 'Property' && p.key.type === 'Identifier' && p.key.name === 'link'
-							)
-						);
-
-						if (link_option) {
-							declarations.push(
-								b.declarator(
-									declarator.id,
-									b.call(
-										'$.state_linked',
-										b.thunk(
-											b.block([
-												{ ...node, declarations: [state_declaration] },
-												b.stmt(
-													b.call(
-														'$.get',
-														b.call(
-															'$.derived',
-															/** @type {FunctionExpression} */ (context.visit(link_option.value))
-														)
-													)
-												),
-												b.return(declarator.id)
-											])
-										)
-									)
-								)
-							);
-						}
-					} else {
-						declarations.push(state_declaration);
-					}
 				} else {
 					const tmp = context.state.scope.generate('tmp');
 					const paths = extract_paths(declarator.id);

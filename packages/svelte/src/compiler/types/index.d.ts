@@ -309,6 +309,7 @@ export interface Binding {
 		/** `true` if is (inside) a rest parameter */
 		inside_rest?: boolean;
 	} | null;
+	linked_effects: null | string[];
 }
 
 export interface ExpressionMetadata {

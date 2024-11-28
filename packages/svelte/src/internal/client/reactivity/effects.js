@@ -35,8 +35,7 @@ import {
 	INSPECT_EFFECT,
 	HEAD_EFFECT,
 	MAYBE_DIRTY,
-	EFFECT_HAS_DERIVED,
-	LINKED_STATE
+	EFFECT_HAS_DERIVED
 } from '../constants.js';
 import { set } from './sources.js';
 import * as e from '../errors.js';

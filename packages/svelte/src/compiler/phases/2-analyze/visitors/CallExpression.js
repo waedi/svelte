@@ -1,4 +1,4 @@
-/** @import { CallExpression, VariableDeclarator } from 'estree' */
+/** @import { SimpleCallExpression, MemberExpression, VariableDeclarator, CallExpression, Identifier } from 'estree' */
 /** @import { AST, SvelteNode, Binding } from '#compiler' */
 /** @import { Context } from '../types' */
 import { get_rune } from '../../scope.js';
@@ -85,37 +85,52 @@ export function CallExpression(node, context) {
 
 			if ((rune === '$derived' || rune === '$derived.by') && node.arguments.length !== 1) {
 				e.rune_invalid_arguments_length(node, rune, 'exactly one argument');
-			}
-			const grand_parent = /** @type {SvelteNode} */ (get_parent(context.path, -2));
-
-			if (rune === '$state') {
-				if (node.arguments.length > 2) {
-					e.rune_invalid_arguments_length(node, rune, 'zero, one or two arguments');
-				}
-				if (node.arguments.length === 2) {
-					if (
-						node.arguments[1].type !== 'ObjectExpression' ||
-						grand_parent.type !== 'VariableDeclaration' ||
-						grand_parent.declarations.length !== 1 ||
-						grand_parent.declarations[0].id?.type !== 'Identifier'
-					) {
-						throw new Error('TODO bad $state');
-					}
-					const id = grand_parent.declarations[0].id.name;
-					const binding = /** @type {Binding} */ (context.state.scope.get(id));
-					binding.reassigned = true;
-				}
+			} else if (rune === '$state' && node.arguments.length > 1) {
+				e.rune_invalid_arguments_length(node, rune, 'zero or one arguments');
 			}
 
 			break;
 		}
 		case '$effect':
-		case '$effect.pre':
+		case '$effect.pre': {
+			const grand_parent = /** @type {SvelteNode} */ (get_parent(context.path, -2));
+
 			if (parent.type !== 'ExpressionStatement') {
 				e.effect_invalid_placement(node);
 			}
 
-			if (node.arguments.length !== 1) {
+			if (rune === '$effect.pre') {
+				if (node.arguments.length !== 1 && node.arguments.length !== 2) {
+					e.rune_invalid_arguments_length(node, rune, 'exactly one or two arguments');
+				}
+
+				if (node.arguments.length === 2) {
+					const linked = node.arguments[1];
+
+					if (
+						linked.type !== 'ArrayExpression' ||
+						linked.elements.some((e) => e?.type !== 'Identifier')
+					) {
+						throw new Error('Bad $effect.pre, second argument must be an array of identifiers');
+					}
+					const scope = context.state.scope;
+
+					for (const element of linked.elements) {
+						const binding = /** @type {Binding} */ (
+							scope.get(/** @type {Identifier} */ (element).name)
+						);
+
+						if (binding === null || binding.kind !== 'state') {
+							throw new Error('Bad $effect.pre link, must be a local reference to $state');
+						}
+						const link = scope.generate('effect');
+						(binding.linked_effects ??= []).push(link);
+						/** @type {SimpleCallExpression} */ (node).metadata = {
+							link
+						};
+					}
+				}
+			} else if (node.arguments.length !== 1) {
 				e.rune_invalid_arguments_length(node, rune, 'exactly one argument');
 			}
 
@@ -124,6 +139,7 @@ export function CallExpression(node, context) {
 			context.state.analysis.needs_context = true;
 
 			break;
+		}
 
 		case '$effect.tracking':
 			if (node.arguments.length !== 0) {

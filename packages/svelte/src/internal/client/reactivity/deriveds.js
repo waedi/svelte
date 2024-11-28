@@ -6,7 +6,6 @@ import {
 	DESTROYED,
 	DIRTY,
 	EFFECT_HAS_DERIVED,
-	LINKED_STATE,
 	MAYBE_DIRTY,
 	UNOWNED
 } from '../constants.js';
@@ -29,12 +28,11 @@ import { inspect_effects, set_inspect_effects } from './sources.js';
 /**
  * @template V
  * @param {() => V} fn
- * @param {number} [_flags]
  * @returns {Derived<V>}
  */
 /*#__NO_SIDE_EFFECTS__*/
-export function derived(fn,  _flags = 0) {
-	var flags = DERIVED | DIRTY | _flags;
+export function derived(fn) {
+	var flags = DERIVED | DIRTY;
 
 	if (active_effect === null) {
 		flags |= UNOWNED;
@@ -170,9 +168,6 @@ export function execute_derived(derived) {
  * @returns {void}
  */
 export function update_derived(derived) {
-	if ((derived.parent !== null && derived.parent.f & LINKED_STATE) !== 0) {
-		set_signal_status(derived, CLEAN);
-	}
 	var value = execute_derived(derived);
 	var status =
 		(skip_reaction || (derived.f & UNOWNED) !== 0) && derived.deps !== null ? MAYBE_DIRTY : CLEAN;

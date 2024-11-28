@@ -108,7 +108,8 @@ export class Scope {
 			declaration_kind,
 			is_called: false,
 			prop_alias: null,
-			metadata: null
+			metadata: null,
+			linked_effects: null
 		};
 
 		validate_identifier_name(binding, this.function_depth);

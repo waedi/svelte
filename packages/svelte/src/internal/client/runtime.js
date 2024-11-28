@@ -24,8 +24,7 @@ import {
 	BLOCK_EFFECT,
 	ROOT_EFFECT,
 	LEGACY_DERIVED_PROP,
-	DISCONNECTED,
-	LINKED_STATE
+	DISCONNECTED
 } from './constants.js';
 import { flush_tasks } from './dom/task.js';
 import { add_owner } from './dev/ownership.js';
@@ -175,19 +174,6 @@ export function is_runes() {
  */
 export function check_dirtiness(reaction) {
 	var flags = reaction.f;
-
-	if ((flags & LINKED_STATE) !== 0) {
-		var children = /** @type {Derived} */ (reaction).children;
-		if (children !== null) {
-			for (let i = 0; i < children.length; i++) {
-				var child = children[i];
-				if ((child.f & DERIVED) !== 0) {
-					get(/** @type {Derived} */ (child));
-				}
-			}
-			return false;
-		}
-	}
 
 	if ((flags & DIRTY) !== 0) {
 		return true;
@@ -533,6 +519,30 @@ function flush_queued_root_effects(root_effects) {
 }
 
 /**
+ * @param {Effect} effect
+ */
+export function flush_effect(effect) {
+	if ((effect.f & (DESTROYED | INERT)) === 0 && check_dirtiness(effect)) {
+		update_effect(effect);
+
+		// Effects with no dependencies or teardown do not get added to the effect tree.
+		// Deferred effects (e.g. `$effect(...)`) _are_ added to the tree because we
+		// don't know if we need to keep them until they are executed. Doing the check
+		// here (rather than in `update_effect`) allows us to skip the work for
+		// immediate effects.
+		if (effect.deps === null && effect.first === null && effect.nodes_start === null) {
+			if (effect.teardown === null) {
+				// remove this effect from the graph
+				unlink_effect(effect);
+			} else {
+				// keep the effect in the graph, but free up some memory
+				effect.fn = null;
+			}
+		}
+	}
+}
+
+/**
  * @param {Array<Effect>} effects
  * @returns {void}
  */
@@ -543,24 +553,7 @@ function flush_queued_effects(effects) {
 	for (var i = 0; i < length; i++) {
 		var effect = effects[i];
 
-		if ((effect.f & (DESTROYED | INERT)) === 0 && check_dirtiness(effect)) {
-			update_effect(effect);
-
-			// Effects with no dependencies or teardown do not get added to the effect tree.
-			// Deferred effects (e.g. `$effect(...)`) _are_ added to the tree because we
-			// don't know if we need to keep them until they are executed. Doing the check
-			// here (rather than in `update_effect`) allows us to skip the work for
-			// immediate effects.
-			if (effect.deps === null && effect.first === null && effect.nodes_start === null) {
-				if (effect.teardown === null) {
-					// remove this effect from the graph
-					unlink_effect(effect);
-				} else {
-					// keep the effect in the graph, but free up some memory
-					effect.fn = null;
-				}
-			}
-		}
+		flush_effect(effect);
 	}
 }
 
@@ -751,7 +744,7 @@ export function get(signal) {
 	}
 
 	// Register the dependency on the current reaction signal.
-	if (active_reaction !== null && (active_reaction.f & LINKED_STATE) === 0) {
+	if (active_reaction !== null) {
 		if (derived_sources !== null && derived_sources.includes(signal)) {
 			e.state_unsafe_local_read();
 		}
@@ -810,9 +803,6 @@ export function get(signal) {
 		}
 	}
 
-	if ((signal.f & LINKED_STATE) !== 0) {
-		return get(/** @type {Value<V>} */ (signal.v))
-	}
 	return signal.v;
 }
 
