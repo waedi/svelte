@@ -111,6 +111,7 @@ export function Identifier(node, context) {
 			(parent.type !== 'AssignmentExpression' || parent.left !== node) &&
 			parent.type !== 'UpdateExpression'
 		) {
+			debugger
 			w.state_referenced_locally(node);
 		}
 
