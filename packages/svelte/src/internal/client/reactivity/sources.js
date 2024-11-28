@@ -30,7 +30,8 @@ import {
 	INSPECT_EFFECT,
 	UNOWNED,
 	MAYBE_DIRTY,
-	BLOCK_EFFECT
+	BLOCK_EFFECT,
+	LAZY_EFFECT
 } from '../constants.js';
 import * as e from '../errors.js';
 import { legacy_mode_flag } from '../../flags/index.js';
@@ -282,9 +283,8 @@ function mark_reactions(signal, status) {
 				var effect = /** @type {Effect} */ (reaction);
 				schedule_effect(effect);
 
-				// Mark any linked deriveds as dirty
-				var deriveds = effect.deriveds;
-				if (deriveds !== null) {
+				if ((flags & LAZY_EFFECT) !== 0) {
+					var deriveds = /** @type {Derived[]} */ (effect.deriveds);
 					for (let i = 0; i < deriveds.length; i++) {
 						var derived = deriveds[i];
 						if (derived.parent !== effect) {
