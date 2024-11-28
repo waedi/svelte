@@ -20,7 +20,8 @@ export function add_state_transformers(context) {
 		if (
 			is_state_source(binding, context.state.analysis) ||
 			binding.kind === 'derived' ||
-			binding.kind === 'legacy_reactive'
+			binding.kind === 'legacy_reactive' ||
+			binding.linked_effects !== null
 		) {
 			context.state.transform[name] = {
 				read: binding.declaration_kind === 'var' ? (node) => b.call('$.safe_get', node) : get_value,
