@@ -237,13 +237,6 @@ export function lazy_effect(fn, states) {
 		LAZY_EFFECT,
 		() => {
 			var teardown = fn();
-			if (new_deps !== null) {
-				for (var i = new_deps.length - 1; i >= 0; i--) {
-					if (states.includes(/** @type {Derived} */ (new_deps[i]))) {
-						new_deps.splice(i, 1);
-					}
-				}
-			}
 			var current_effect = /** @type {Effect} */ (active_reaction);
 			(current_effect.deriveds ??= []).push(...states);
 

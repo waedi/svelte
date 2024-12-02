@@ -248,9 +248,10 @@ export function internal_set(source, value) {
 /**
  * @param {Value} signal
  * @param {number} status should be DIRTY or MAYBE_DIRTY
+ * @param {Set<Value>} [visited]
  * @returns {void}
  */
-function mark_reactions(signal, status) {
+function mark_reactions(signal, status, visited) {
 	var reactions = signal.reactions;
 	if (reactions === null) return;
 
@@ -265,11 +266,14 @@ function mark_reactions(signal, status) {
 			var effect = /** @type {Effect} */ (reaction);
 			var deriveds = effect.deriveds;
 			if (deriveds !== null) {
+				const visited_set = visited ?? new Set();
+
 				for (let i = 0; i < deriveds.length; i++) {
 					var derived = deriveds[i];
-					if (derived.parent !== effect) {
+					if (derived.parent !== effect && !visited_set?.has(derived)) {
+						visited_set.add(derived)
 						set_signal_status(derived, DIRTY);
-						mark_reactions(derived, MAYBE_DIRTY);
+						mark_reactions(derived, MAYBE_DIRTY, visited_set);
 					}
 				}
 			}
@@ -292,7 +296,7 @@ function mark_reactions(signal, status) {
 		// If the signal a) was previously clean or b) is an unowned derived, then mark it
 		if ((flags & (CLEAN | UNOWNED)) !== 0) {
 			if ((flags & DERIVED) !== 0) {
-				mark_reactions(/** @type {Derived} */ (reaction), MAYBE_DIRTY);
+				mark_reactions(/** @type {Derived} */ (reaction), MAYBE_DIRTY, visited);
 			} else {
 				effect = /** @type {Effect} */ (reaction);
 				schedule_effect(effect);
