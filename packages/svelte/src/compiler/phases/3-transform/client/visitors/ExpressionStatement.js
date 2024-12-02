@@ -1,4 +1,4 @@
-/** @import { Expression, Property, ExpressionStatement, ObjectExpression, Identifier } from 'estree' */
+/** @import { Expression, Property, ExpressionStatement, ObjectExpression, Identifier, ArrayExpression } from 'estree' */
 /** @import { ComponentContext } from '../types' */
 import * as b from '../../../../utils/builders.js';
 import { get_rune } from '../../../scope.js';
@@ -26,7 +26,7 @@ export function ExpressionStatement(node, context) {
 			const expr = b.call(
 				'$.lazy_effect',
 				/** @type {Expression} */ (func),
-				/** @type {Identifier} */ (node.expression.arguments[0])
+				/** @type {ArrayExpression} */ (node.expression.arguments[0])
 			);
 			expr.callee.loc = node.expression.callee.loc; // ensure correct mapping
 

@@ -1,4 +1,4 @@
-/** @import { ComponentContext, ComponentContextLegacy, Derived, Effect, Reaction, TemplateNode, TransitionManager } from '#client' */
+/** @import { ComponentContext, ComponentContextLegacy, Derived, Effect, TemplateNode, TransitionManager } from '#client' */
 import {
 	check_dirtiness,
 	component_context,
@@ -16,7 +16,8 @@ import {
 	set_is_flushing_effect,
 	set_signal_status,
 	untrack,
-	skip_reaction
+	skip_reaction,
+	new_deps
 } from '../runtime.js';
 import {
 	DIRTY,
@@ -221,10 +222,10 @@ export function user_effect(fn) {
 /**
  * Internal representation of `$effect.lazy(...)`
  * @param {() => void | (() => void)} fn
- * @param {Derived} state
+ * @param {Derived[]} states
  * @returns {Effect}
  */
-export function lazy_effect(fn, state) {
+export function lazy_effect(fn, states) {
 	validate_effect('$effect.lazy');
 	if (DEV) {
 		define_property(fn, 'name', {
@@ -236,8 +237,15 @@ export function lazy_effect(fn, state) {
 		LAZY_EFFECT,
 		() => {
 			var teardown = fn();
+			if (new_deps !== null) {
+				for (var i = new_deps.length - 1; i >= 0; i--) {
+					if (states.includes(/** @type {Derived} */ (new_deps[i]))) {
+						new_deps.splice(i, 1);
+					}
+				}
+			}
 			var current_effect = /** @type {Effect} */ (active_reaction);
-			(current_effect.deriveds ??= []).push(state);
+			(current_effect.deriveds ??= []).push(...states);
 
 			return teardown;
 		},

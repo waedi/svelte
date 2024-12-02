@@ -103,20 +103,28 @@ export function CallExpression(node, context) {
 				}
 				const state_ref = node.arguments[0];
 
-				if (state_ref.type !== 'Identifier') {
-					throw new Error('Bad $effect.lazy, first argument must be an identifier');
+				if (state_ref.type !== 'ArrayExpression') {
+					throw new Error('Bad $effect.lazy, first argument must be an array of $state references');
 				}
 				const scope = context.state.scope;
-				const binding = /** @type {Binding} */ (scope.get(state_ref.name));
+				for (const element of state_ref.elements) {
+					if (element === null || element.type !== 'Identifier') {
+						throw new Error(
+							'Bad $effect.lazy, first argument must be an array of $state references'
+						);
+					}
 
-				if (binding === null || binding.kind !== 'state') {
-					throw new Error('Bad $effect.lazy link, must be a local reference to $state');
+					const binding = /** @type {Binding} */ (scope.get(element.name));
+
+					if (binding === null || binding.kind !== 'state') {
+						throw new Error('Bad $effect.lazy link, must be a local reference to $state');
+					}
+					const id = scope.generate('effect');
+					(binding.linked_effects ??= []).push(id);
+					/** @type {SimpleCallExpression} */ (node).metadata = {
+						id
+					};
 				}
-				const id = scope.generate('effect');
-				(binding.linked_effects ??= []).push(id);
-				/** @type {SimpleCallExpression} */ (node).metadata = {
-					id
-				};
 			} else if (node.arguments.length !== 1) {
 				e.rune_invalid_arguments_length(node, rune, 'exactly one argument');
 			}
