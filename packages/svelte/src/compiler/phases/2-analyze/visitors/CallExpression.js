@@ -1,5 +1,5 @@
 /** @import { CallExpression, VariableDeclarator } from 'estree' */
-/** @import { AST, SvelteNode } from '#compiler' */
+/** @import { AST, SvelteNode, Binding } from '#compiler' */
 /** @import { Context } from '../types' */
 import { get_rune } from '../../scope.js';
 import * as e from '../../../errors.js';
@@ -86,8 +86,37 @@ export function CallExpression(node, context) {
 
 			if ((rune === '$derived' || rune === '$derived.by') && node.arguments.length !== 1) {
 				e.rune_invalid_arguments_length(node, rune, 'exactly one argument');
-			} else if (rune === '$state' && node.arguments.length > 1) {
-				e.rune_invalid_arguments_length(node, rune, 'zero or one arguments');
+			} else if (rune === '$state') {
+				if (node.arguments.length > 2) {
+					e.rune_invalid_arguments_length(node, rune, 'zero, one or two arguments');
+				}
+				if (node.arguments.length === 2) {
+					const options = node.arguments[1];
+					if (options.type !== 'ObjectExpression') {
+						throw new Error('TODO: $state second argument must be options object');
+					}
+					for (const prop of options.properties) {
+						if (
+							prop.type !== 'Property' ||
+							prop.computed ||
+							prop.key.type !== 'Identifier' ||
+							prop.key.name !== 'use'
+						) {
+							throw new Error('TODO: $state options only supports the `use` property');
+						}
+					}
+					const grand_parent = /** @type {SvelteNode} */ (get_parent(context.path, -2));
+					if (
+						grand_parent.type !== 'VariableDeclaration' ||
+						grand_parent.declarations.length !== 1 ||
+						grand_parent.declarations[0].id?.type !== 'Identifier'
+					) {
+						throw new Error('TODO: $state not a declaration');
+					}
+					const id = grand_parent.declarations[0].id.name;
+					const binding = /** @type {Binding} */ (context.state.scope.get(id));
+					binding.reassigned = true;
+				}
 			}
 
 			break;

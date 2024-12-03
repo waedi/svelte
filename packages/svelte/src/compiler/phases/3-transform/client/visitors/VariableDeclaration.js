@@ -1,4 +1,4 @@
-/** @import { CallExpression, Expression, Identifier, Literal, VariableDeclaration, VariableDeclarator } from 'estree' */
+/** @import { CallExpression, Expression, Identifier, ObjectExpression, Property, Literal, VariableDeclaration, VariableDeclarator } from 'estree' */
 /** @import { Binding } from '#compiler' */
 /** @import { ComponentClientTransformState, ComponentContext } from '../types' */
 import { dev } from '../../../../state.js';
@@ -125,7 +125,23 @@ export function VariableDeclaration(node, context) {
 					if (rune === '$state' && should_proxy(value, context.state.scope)) {
 						value = b.call('$.proxy', value);
 					}
-					if (is_state_source(binding, context.state.analysis)) {
+					if (args.length === 2) {
+						const options = /** @type {ObjectExpression} */ (args[1]);
+						const use_property = /** @type {Expression} */ (
+							/** @type {Property} */ (
+								options.properties.find(
+									(p) =>
+										p.type === 'Property' && p.key.type === 'Identifier' && p.key.name === 'use'
+								)
+							).value
+						);
+
+						value = b.call(
+							'$.state',
+							value,
+							/** @type {Expression} */ (context.visit(use_property))
+						);
+					} else if (is_state_source(binding, context.state.analysis)) {
 						value = b.call('$.state', value);
 					}
 					return value;

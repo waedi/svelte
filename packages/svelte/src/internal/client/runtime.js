@@ -592,6 +592,34 @@ function flush_queued_root_effects(root_effects) {
 }
 
 /**
+ * @param {Effect} effect
+ */
+export function flush_effect(effect) {
+	try {
+		if ((effect.f & (DESTROYED | INERT)) === 0 && check_dirtiness(effect)) {
+			update_effect(effect);
+
+			// Effects with no dependencies or teardown do not get added to the effect tree.
+			// Deferred effects (e.g. `$effect(...)`) _are_ added to the tree because we
+			// don't know if we need to keep them until they are executed. Doing the check
+			// here (rather than in `update_effect`) allows us to skip the work for
+			// immediate effects.
+			if (effect.deps === null && effect.first === null && effect.nodes_start === null) {
+				if (effect.teardown === null) {
+					// remove this effect from the graph
+					unlink_effect(effect);
+				} else {
+					// keep the effect in the graph, but free up some memory
+					effect.fn = null;
+				}
+			}
+		}
+	} catch (error) {
+		handle_error(error, effect, null, effect.ctx);
+	}
+}
+
+/**
  * @param {Array<Effect>} effects
  * @returns {void}
  */
@@ -600,32 +628,7 @@ function flush_queued_effects(effects) {
 	if (length === 0) return;
 
 	for (var i = 0; i < length; i++) {
-		var effect = effects[i];
-
-		if ((effect.f & (DESTROYED | INERT)) === 0) {
-			try {
-				if (check_dirtiness(effect)) {
-					update_effect(effect);
-
-					// Effects with no dependencies or teardown do not get added to the effect tree.
-					// Deferred effects (e.g. `$effect(...)`) _are_ added to the tree because we
-					// don't know if we need to keep them until they are executed. Doing the check
-					// here (rather than in `update_effect`) allows us to skip the work for
-					// immediate effects.
-					if (effect.deps === null && effect.first === null && effect.nodes_start === null) {
-						if (effect.teardown === null) {
-							// remove this effect from the graph
-							unlink_effect(effect);
-						} else {
-							// keep the effect in the graph, but free up some memory
-							effect.fn = null;
-						}
-					}
-				}
-			} catch (error) {
-				handle_error(error, effect, null, effect.ctx);
-			}
-		}
+		flush_effect(effects[i]);
 	}
 }
 

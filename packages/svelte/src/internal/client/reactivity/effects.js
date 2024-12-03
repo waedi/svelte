@@ -83,7 +83,7 @@ function push_effect(effect, parent_effect) {
  * @param {boolean} push
  * @returns {Effect}
  */
-function create_effect(type, fn, sync, push = true) {
+export function create_effect(type, fn, sync, push = true) {
 	var is_root = (type & ROOT_EFFECT) !== 0;
 	var parent_effect = active_effect;
 
@@ -376,7 +376,11 @@ export function destroy_effect_deriveds(signal) {
 		signal.deriveds = null;
 
 		for (var i = 0; i < deriveds.length; i += 1) {
-			destroy_derived(deriveds[i]);
+			var derived = deriveds[i];
+
+			if (derived.parent === signal) {
+				destroy_derived(deriveds[i]);
+			}
 		}
 	}
 }

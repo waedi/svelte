@@ -1,4 +1,4 @@
-/** @import { VariableDeclaration, VariableDeclarator, Expression, CallExpression, Pattern, Identifier } from 'estree' */
+/** @import { VariableDeclaration, VariableDeclarator, ObjectExpression, Expression, Property, CallExpression, Pattern, Identifier } from 'estree' */
 /** @import { Binding } from '#compiler' */
 /** @import { Context } from '../types.js' */
 /** @import { Scope } from '../../../scope.js' */
@@ -81,7 +81,32 @@ export function VariableDeclaration(node, context) {
 			}
 
 			if (declarator.id.type === 'Identifier') {
-				declarations.push(b.declarator(declarator.id, value));
+				if (rune === '$state' && args.length === 2) {
+					const options = /** @type {ObjectExpression} */ (args[1]);
+					const use_property = /** @type {Expression} */ (
+						/** @type {Property} */ (
+							options.properties.find(
+								(p) => p.type === 'Property' && p.key.type === 'Identifier' && p.key.name === 'use'
+							)
+						).value
+					);
+					declarations.push(
+						b.declarator(
+							declarator.id,
+							b.call(
+								b.thunk(
+									b.block([
+										{ ...node, declarations: [b.declarator(declarator.id, value)] },
+										b.stmt(b.call(/** @type {Expression} */ (context.visit(use_property)))),
+										b.return(declarator.id)
+									])
+								)
+							)
+						)
+					);
+				} else {
+					declarations.push(b.declarator(declarator.id, value));
+				}
 				continue;
 			}
 

@@ -18,7 +18,8 @@ import {
 	set_derived_sources,
 	check_dirtiness,
 	set_is_flushing_effect,
-	is_flushing_effect
+	is_flushing_effect,
+	flush_effect
 } from '../runtime.js';
 import { equals, safe_equals } from './equality.js';
 import {
@@ -29,10 +30,14 @@ import {
 	INSPECT_EFFECT,
 	UNOWNED,
 	MAYBE_DIRTY,
-	BLOCK_EFFECT
+	BLOCK_EFFECT,
+	STATE_USE_EFFECT
 } from '../constants.js';
 import * as e from '../errors.js';
 import { legacy_mode_flag } from '../../flags/index.js';
+import { derived } from './deriveds.js';
+import { define_property } from '../../shared/utils.js';
+import { create_effect } from './effects.js';
 
 export let inspect_effects = new Set();
 
@@ -61,8 +66,42 @@ export function source(v) {
 /**
  * @template V
  * @param {V} v
+ * @param {() => void} [use_fn]
  */
-export function state(v) {
+export function state(v, use_fn) {
+	if (use_fn) {
+		if (DEV) {
+			define_property(use_fn, 'name', {
+				value: '$state(..., { use() })'
+			});
+		}
+
+		var use_effect = create_effect(
+			STATE_USE_EFFECT,
+			() => {
+				var teardown = use_fn();
+				var current_effect = /** @type {Effect} */ (active_reaction);
+				(current_effect.deriveds ??= []).push(derived_state);
+
+				return teardown;
+			},
+			false
+		);
+
+		/** @type {Derived} */
+		var derived_state = derived(() => {
+			set_signal_status(derived_state, CLEAN);
+			flush_effect(use_effect);
+
+			var current_derived = /** @type {Derived} */ (active_reaction);
+
+			return current_derived.v;
+		});
+
+		derived_state.v = v;
+
+		return derived_state;
+	}
 	return push_derived_source(source(v));
 }
 
@@ -213,9 +252,10 @@ export function internal_set(source, value) {
 /**
  * @param {Value} signal
  * @param {number} status should be DIRTY or MAYBE_DIRTY
+ * @param {Set<Value>} [visited]
  * @returns {void}
  */
-function mark_reactions(signal, status) {
+function mark_reactions(signal, status, visited) {
 	var reactions = signal.reactions;
 	if (reactions === null) return;
 
@@ -225,6 +265,23 @@ function mark_reactions(signal, status) {
 	for (var i = 0; i < length; i++) {
 		var reaction = reactions[i];
 		var flags = reaction.f;
+
+		if ((flags & STATE_USE_EFFECT) !== 0) {
+			var effect = /** @type {Effect} */ (reaction);
+			var deriveds = effect.deriveds;
+			if (deriveds !== null) {
+				const visited_set = visited ?? new Set();
+
+				for (let i = 0; i < deriveds.length; i++) {
+					var derived = deriveds[i];
+					if (derived.parent !== effect && !visited_set?.has(derived)) {
+						visited_set.add(derived);
+						set_signal_status(derived, DIRTY);
+						mark_reactions(derived, MAYBE_DIRTY, visited_set);
+					}
+				}
+			}
+		}
 
 		// Skip any effects that are already dirty
 		if ((flags & DIRTY) !== 0) continue;
@@ -243,7 +300,7 @@ function mark_reactions(signal, status) {
 		// If the signal a) was previously clean or b) is an unowned derived, then mark it
 		if ((flags & (CLEAN | UNOWNED)) !== 0) {
 			if ((flags & DERIVED) !== 0) {
-				mark_reactions(/** @type {Derived} */ (reaction), MAYBE_DIRTY);
+				mark_reactions(/** @type {Derived} */ (reaction), MAYBE_DIRTY, visited);
 			} else {
 				schedule_effect(/** @type {Effect} */ (reaction));
 			}
