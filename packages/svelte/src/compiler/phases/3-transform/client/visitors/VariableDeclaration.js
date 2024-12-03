@@ -127,11 +127,11 @@ export function VariableDeclaration(node, context) {
 					}
 					if (args.length === 2) {
 						const options = /** @type {ObjectExpression} */ (args[1]);
-						const use_property = /** @type {Expression} */ (
+						const sync_property = /** @type {Expression} */ (
 							/** @type {Property} */ (
 								options.properties.find(
 									(p) =>
-										p.type === 'Property' && p.key.type === 'Identifier' && p.key.name === 'use'
+										p.type === 'Property' && p.key.type === 'Identifier' && p.key.name === 'sync'
 								)
 							).value
 						);
@@ -139,7 +139,7 @@ export function VariableDeclaration(node, context) {
 						value = b.call(
 							'$.state',
 							value,
-							/** @type {Expression} */ (context.visit(use_property))
+							/** @type {Expression} */ (context.visit(sync_property))
 						);
 					} else if (is_state_source(binding, context.state.analysis)) {
 						value = b.call('$.state', value);

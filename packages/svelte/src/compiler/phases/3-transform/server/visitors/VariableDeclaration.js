@@ -83,10 +83,10 @@ export function VariableDeclaration(node, context) {
 			if (declarator.id.type === 'Identifier') {
 				if (rune === '$state' && args.length === 2) {
 					const options = /** @type {ObjectExpression} */ (args[1]);
-					const use_property = /** @type {Expression} */ (
+					const sync_property = /** @type {Expression} */ (
 						/** @type {Property} */ (
 							options.properties.find(
-								(p) => p.type === 'Property' && p.key.type === 'Identifier' && p.key.name === 'use'
+								(p) => p.type === 'Property' && p.key.type === 'Identifier' && p.key.name === 'sync'
 							)
 						).value
 					);
@@ -97,7 +97,7 @@ export function VariableDeclaration(node, context) {
 								b.thunk(
 									b.block([
 										{ ...node, declarations: [b.declarator(declarator.id, value)] },
-										b.stmt(b.call(/** @type {Expression} */ (context.visit(use_property)))),
+										b.stmt(b.call(/** @type {Expression} */ (context.visit(sync_property)))),
 										b.return(declarator.id)
 									])
 								)

@@ -2341,8 +2341,7 @@ declare module 'svelte/types/compiler/interfaces' {
  *
  * @param initial The initial value
  */
-declare function $state<T>(initial: T, options: { use?: () => void }): T;
-declare function $state<T>(initial: T): T;
+declare function $state<T>(initial: T, options?: { sync?: () => void }): T;
 declare function $state<T>(): T | undefined;
 
 declare namespace $state {

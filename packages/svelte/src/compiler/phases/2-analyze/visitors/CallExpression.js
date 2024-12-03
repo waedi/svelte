@@ -100,9 +100,9 @@ export function CallExpression(node, context) {
 							prop.type !== 'Property' ||
 							prop.computed ||
 							prop.key.type !== 'Identifier' ||
-							prop.key.name !== 'use'
+							prop.key.name !== 'sync'
 						) {
-							throw new Error('TODO: $state options only supports the `use` property');
+							throw new Error('TODO: $state options only supports the `sync` property');
 						}
 					}
 					const grand_parent = /** @type {SvelteNode} */ (get_parent(context.path, -2));

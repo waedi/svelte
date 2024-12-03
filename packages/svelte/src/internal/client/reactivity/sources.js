@@ -31,7 +31,7 @@ import {
 	UNOWNED,
 	MAYBE_DIRTY,
 	BLOCK_EFFECT,
-	STATE_USE_EFFECT
+	SYNCHRONIZE_EFFECT
 } from '../constants.js';
 import * as e from '../errors.js';
 import { legacy_mode_flag } from '../../flags/index.js';
@@ -66,20 +66,20 @@ export function source(v) {
 /**
  * @template V
  * @param {V} v
- * @param {() => void} [use_fn]
+ * @param {() => void} [sync_fn]
  */
-export function state(v, use_fn) {
-	if (use_fn) {
+export function state(v, sync_fn) {
+	if (sync_fn) {
 		if (DEV) {
-			define_property(use_fn, 'name', {
-				value: '$state(..., { use() })'
+			define_property(sync_fn, 'name', {
+				value: '$state(..., { sync() })'
 			});
 		}
 
-		var use_effect = create_effect(
-			STATE_USE_EFFECT,
+		var sync_effect = create_effect(
+			SYNCHRONIZE_EFFECT,
 			() => {
-				var teardown = use_fn();
+				var teardown = sync_fn();
 				var current_effect = /** @type {Effect} */ (active_reaction);
 				(current_effect.deriveds ??= []).push(derived_state);
 
@@ -91,7 +91,7 @@ export function state(v, use_fn) {
 		/** @type {Derived} */
 		var derived_state = derived(() => {
 			set_signal_status(derived_state, CLEAN);
-			flush_effect(use_effect);
+			flush_effect(sync_effect);
 
 			var current_derived = /** @type {Derived} */ (active_reaction);
 
