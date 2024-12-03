@@ -266,7 +266,7 @@ function mark_reactions(signal, status, visited) {
 		var reaction = reactions[i];
 		var flags = reaction.f;
 
-		if ((flags & STATE_USE_EFFECT) !== 0) {
+		if ((flags & SYNCHRONIZE_EFFECT) !== 0) {
 			var effect = /** @type {Effect} */ (reaction);
 			var deriveds = effect.deriveds;
 			if (deriveds !== null) {
