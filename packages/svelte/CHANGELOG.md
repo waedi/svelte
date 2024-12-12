@@ -1,5 +1,11 @@
 # svelte
 
+## 5.11.3
+
+### Patch Changes
+
+- fix: avoid mutation validation for invalidate_inner_signals ([#14688](https://github.com/sveltejs/svelte/pull/14688))
+
 ## 5.11.2
 
 ### Patch Changes
